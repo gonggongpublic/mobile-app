@@ -1,0 +1,35 @@
+name: PR 규칙
+on:
+  pull_request:
+    branches: [develop, main]
+    types: [opened, edited, reopened, synchronize]
+permissions: {}
+jobs:
+  format:
+    name: 브랜치 · PR 제목 형식
+    runs-on: ubuntu-latest
+    steps:
+      - name: 형식 확인
+        env:
+          BRANCH: ${{ github.head_ref }}
+          BASE: ${{ github.base_ref }}
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          if [[ "$BASE" == main && "$BRANCH" == develop ]]; then
+            exit 0
+          fi
+          if [[ "$BASE" != develop ]]; then
+            echo "::error::main 대상 PR은 develop에서 열어 주세요."
+            exit 1
+          fi
+          pattern='^(feat|fix|infra|docs|test|refactor|chore|style)/([0-9]+(\.[0-9]+)*)-[a-z0-9]+(-[a-z0-9]+)*$'
+          if [[ ! "$BRANCH" =~ $pattern ]]; then
+            echo "::error::브랜치 예시: feat/2.3.1-qr-validation"
+            exit 1
+          fi
+          wbs="${BASH_REMATCH[2]}"
+          prefix="[$wbs] "
+          if [[ "$TITLE" != "$prefix"* || ! "${TITLE#"$prefix"}" =~ [^[:space:]] ]]; then
+            echo "::error::PR 제목은 브랜치와 동일한 [WBS번호] 작업명 형식으로 적어 주세요."
+            exit 1
+          fi
